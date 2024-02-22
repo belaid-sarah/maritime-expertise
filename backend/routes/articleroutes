@@ -1,0 +1,110 @@
+const express = require("express");
+const router = express.Router();
+const methodOverride = require('method-override');
+const Article = require("../models/articleSchema");
+const { findById } = require("../models/User");
+const multer = require('multer');
+const { storage, cloudinary } = require("../cloudinary");
+const upload = multer({ storage });
+
+
+
+const isAuthor = async (req, res, next) => {
+  const { id } = req.params;
+  const article = await Article.findById(id);
+  if(!article.author.equals(req.user._id)){
+     return res.redirect("/");
+  }
+  next();
+}
+
+
+router.get("/", (req, res) => {
+  
+
+  Article.find()
+    .then((result) => {
+      //res.render("index", { mytitle: "HOME", arrArticle: result });
+      res.jsend(result);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+});
+
+router.post("/", upload.array('image'), (req, res) => {
+  console.log(req.body, req.files);
+  res.send("it worked");
+})
+
+
+router.post("/createarticle", upload.array('image'), async(req, res) => {
+  const article = new Article(req.body);
+  article.images = req.files.map(f => ({ url: f.path, filename: f.filename}));
+  article.author = req.user._id;
+
+  await article
+    .save()
+    .then((result) => {
+      res.send("article created successfully");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+});
+
+router.get('/createarticle', (req,res) => {
+  //res.send("create via postman hh");
+})
+
+router.get("/:id", (req, res) => {
+  
+
+  Article.findById(req.params.id)
+    .then((result) => {
+      //res.render("details", { mytitle: "ARTICLE DETAILS", objArticle: result });
+      res.json(result);
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+});
+
+router.get("/:id/edit", isAuthor,async (req,res) =>{
+  const { id } = req.params;
+  const article = await Article.findById(id);
+  if(!Article){
+    return redirect(`/${id}`);
+  }
+  res.json(article);
+})
+
+router.delete("/:id", isAuthor, async (req, res) => {
+  
+  Article.findByIdAndDelete(req.params.id)
+
+    .then((params) => {
+      res.json({ mylink: "/" });
+    })
+
+    .catch((err) => {
+      console.log(err);
+    });
+});
+
+router.put("/:id", isAuthor, upload.array('image'), async (req, res) => {
+  const { id } = req.params;
+  const article = await Article.findByIdAndUpdate(id, {...req.body.article});
+  const imgs = req.files.map(f => ({ url: f.path, filename: f.filename}));
+  article.images.push(...imgs );
+  await article.save();
+  if(req.body.deleteImages) {
+    for(let filename of req.body.deleteImages){
+      await cloudinary.uploader.destroy(filename);
+    };
+    await article.updateOne({ $pull: { images: { filename: { $in: req.body.deleteImages }}}});
+  }
+  res.redirect(`/${article._id}`);
+})
+
+module.exports = router;

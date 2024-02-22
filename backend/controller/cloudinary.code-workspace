@@ -1,0 +1,25 @@
+{
+	"folders": [
+		{
+			"path": "../cloudinary"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../Middleware"
+		},
+		{
+			"path": "../models"
+		},
+		{
+			"path": "../node_modules"
+		},
+		{
+			"path": "../public"
+		},
+		{
+			"path": "../routes"
+		}
+	]
+}
